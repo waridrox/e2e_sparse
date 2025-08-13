@@ -150,7 +150,7 @@ class ResNet_PC_1024_L():
 
         self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
 
-class ResNet_PC_1024_M():
+class ResNet_PC_768_M():
     def __init__(self,input_channels = 5):
         self.model_stat = {
             "base_layer": {"kernel_size": 5, "stride": 1, "padding": 2, "in_channels": 5, "out_channels": 16},
@@ -165,7 +165,7 @@ class ResNet_PC_1024_M():
         
         self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
 
-class ResNet_PC_1024_S():
+class ResNet_PC_768_S():
     def __init__(self,input_channels = 5):
         self.model_stat = {
             "base_layer": {"kernel_size": 5, "stride": 2, "padding": 2, "in_channels": 5, "out_channels": 16},
