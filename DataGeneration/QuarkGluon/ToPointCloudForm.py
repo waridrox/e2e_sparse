@@ -14,7 +14,7 @@ import argparse
 
 def calculate_max_hits():
     max_hit = 0
-    nevents = Data_file["train_jet"].shape[0]
+    nevents = 1024
     for i in tqdm(range(0,Data_file["train_jet"].shape[0]//nevents + 1,1)):
         x = Data_file["train_jet"][i*nevents:(i+1)*nevents,:]
         mask = np.sum((x > 0),axis = -1) > 0
