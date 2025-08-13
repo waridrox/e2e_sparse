@@ -103,19 +103,6 @@ class PointCloudResNet(nn.Module):
         return x.squeeze()
     
 
-class ResNet_PC_1024_S():
-    def __init__(self,input_channels = 5):
-        self.model_stat = {
-            "base_layer": {"kernel_size": 6, "stride": 2, "padding": 2, "in_channels": 5, "out_channels": 32},
-            "block1": {"in_channels": 32, "out_channels": 64, "pooling_type": "maxpool"},
-            "block2": {"in_channels": 64, "out_channels": 64, "pooling_type": "maxpool"},
-            "block3": {"in_channels": 64, "out_channels": 64, "pooling_type": "maxpool"},
-            "block4": {"in_channels": 64, "out_channels": 128, "pooling_type": "maxpool"},
-            "block5": {"in_channels": 128, "out_channels": 512, "pooling_type": "maxpool"},
-            "block6": {"in_channels": 512, "out_channels": 1024, "pooling_type": "maxpool"}
-        }
-
-        self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
 
 class ResNet_PC_1024_S():
     def __init__(self,input_channels = 5):
@@ -147,16 +134,32 @@ class ResNet_PC_1024_M():
 
         self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
 
+
+class ResNet_PC_1024_L():
+    def __init__(self,input_channels = 5):
+        self.model_stat = {
+            "base_layer": {"kernel_size": 1, "stride": 1, "padding": 0, "in_channels": 5, "out_channels": 8},
+            "block1": {"in_channels": 8, "out_channels": 32, "pooling_type": "maxpool"},
+            "block2": {"in_channels": 32, "out_channels": 128, "pooling_type": "maxpool"},
+            "block3": {"in_channels": 128, "out_channels": 256, "pooling_type": "maxpool"},
+            "block4": {"in_channels": 256, "out_channels": 512, "pooling_type": "maxpool"},
+            "block5": {"in_channels": 512, "out_channels": 1024, "pooling_type": "maxpool"},
+            "block6": {"in_channels": 1024, "out_channels": 2048, "pooling_type": "maxpool"},
+            "block7": {"in_channels": 2048, "out_channels": 2048, "pooling_type": "maxpool"}
+        }
+
+        self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
+
 class ResNet_PC_1024_M():
     def __init__(self,input_channels = 5):
         self.model_stat = {
             "base_layer": {"kernel_size": 5, "stride": 1, "padding": 2, "in_channels": 5, "out_channels": 16},
-            "block1": {"in_channels": 16, "out_channels": 32, "pooling_type": "maxpool"}, ## 384
-            "block2": {"in_channels": 32, "out_channels": 64, "pooling_type": "maxpool"}, ## 192
-            "block3": {"in_channels": 64, "out_channels": 128, "pooling_type": "maxpool"}, ## 96
-            "block4": {"in_channels": 128, "out_channels": 256, "pooling_type": "maxpool"}, ## 48
-            "block5": {"in_channels": 256, "out_channels": 512, "pooling_type": "maxpool"}, ## 24
-            "block6": {"in_channels": 512, "out_channels": 1024, "pooling_type": "maxpool"}, ## 12
+            "block1": {"in_channels": 16, "out_channels": 32, "pooling_type": "maxpool"},
+            "block2": {"in_channels": 32, "out_channels": 64, "pooling_type": "maxpool"},
+            "block3": {"in_channels": 64, "out_channels": 128, "pooling_type": "maxpool"},
+            "block4": {"in_channels": 128, "out_channels": 256, "pooling_type": "maxpool"},
+            "block5": {"in_channels": 256, "out_channels": 512, "pooling_type": "maxpool"}, 
+            "block6": {"in_channels": 512, "out_channels": 1024, "pooling_type": "maxpool"},
             "block7": {"in_channels": 1024, "out_channels": 2048, "pooling_type": "maxpool"}
         }
         
@@ -177,17 +180,4 @@ class ResNet_PC_1024_S():
         self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
 
 
-class ResNet_PC_768_L():
-    def __init__(self,input_channels = 5):
-        self.model_stat = {
-            "base_layer": {"kernel_size": 1, "stride": 1, "padding": 0, "in_channels": 5, "out_channels": 8},
-            "block1": {"in_channels": 8, "out_channels": 32, "pooling_type": "maxpool"},
-            "block2": {"in_channels": 32, "out_channels": 128, "pooling_type": "maxpool"},
-            "block3": {"in_channels": 128, "out_channels": 256, "pooling_type": "maxpool"},
-            "block4": {"in_channels": 256, "out_channels": 512, "pooling_type": "maxpool"},
-            "block5": {"in_channels": 512, "out_channels": 1024, "pooling_type": "maxpool"},
-            "block6": {"in_channels": 1024, "out_channels": 2048, "pooling_type": "maxpool"},
-            "block7": {"in_channels": 2048, "out_channels": 2048, "pooling_type": "maxpool"}
-        }
 
-        self.model = PointCloudResNet(self.model_stat, input_channels=input_channels)
