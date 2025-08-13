@@ -11,8 +11,7 @@ import h5py as h5
 import argparse
 import random
 import sys
-sys.path.append("./Supervised/1DCNN/")
-import model as CnnModel
+from CNN import model as CnnModel
 
 def metric(y_true, y_pred):
     fpr, tpr, thresholds = roc_curve(y_true, y_pred)
@@ -65,8 +64,10 @@ if __name__ == "__main__":
         idx = torch.randperm(data_file["train_dataset"]["X"].shape[0])
 
         for batch in tqdm(range(0,data_file["train_dataset"]["X"].shape[0],BATCH_SIZE)):
-            x_batch = torch.tensor(data_file["train_dataset"]["X"][idx[batch:(batch+BATCH_SIZE)]],device=device)
-            y_batch = torch.tensor(data_file["train_dataset"]["Y"][idx[batch:(batch+BATCH_SIZE)]],device=device)
+
+            batch_idx,_ = torch.sort(idx[batch:(batch+BATCH_SIZE)])
+            x_batch = torch.tensor(data_file["train_dataset"]["X"][batch_idx],device=device)
+            y_batch = torch.tensor(data_file["train_dataset"]["Y"][batch_idx],device=device)
 
             optimizer.zero_grad()
             
