@@ -90,7 +90,7 @@ class PointCloudResNet(nn.Module):
             *blocks
         )
 
-        self.final_pool = nn.GlobalMaxPool1d()
+        self.final_pool = nn.AdaptiveMaxPool1d(model_stat[k]["out_channels"])
         self.head = nn.LazyLinear(1)
 
 
