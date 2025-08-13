@@ -75,7 +75,8 @@ class PointCloudResNet(nn.Module):
                                     padding=model_stat["base_layer"]["padding"],
                                     in_channels=input_channels,
                                     out_channels=model_stat["base_layer"]["out_channels"])
-        
+
+        model_stat.pop("base_layer")
         for k in model_stat.keys():
             blocks.append(Block(
                             in_channels = model_stat[k]["in_channels"],
@@ -148,15 +149,6 @@ class ResNet_PC_1024_M():
 
 class ResNet_PC_1024_L():
     def __init__(self,input_channels = 5):
-
-        # self.block1 = Block(in_channels=8,out_channels=32) ## 1024,8 --> 512, 32
-        # self.block2 = Block(in_channels=32,out_channels=128) ## 512,32 --> 256, 128
-        # self.block3 = Block(in_channels=128,out_channels=256) ## 256,128 --> 128, 256
-        # self.block4 = Block(in_channels=256,out_channels=512) ## 128,256 --> 64, 512
-        # self.block5 = Block(in_channels=512,out_channels=1024) ## 64,512 --> 32, 1024
-        # self.block6 = Block(in_channels=1024,out_channels=2048) ## 32,1024 --> 16, 2048
-        # self.block7 = Block(in_channels=2048,out_channels=2048) ## 16,2048 --> 8, 2048
-
         self.model_stat = {
             "base_layer": {"kernel_size": 1, "stride": 1, "padding": 0, "in_channels": 5, "out_channels": 8},
             "block1": {"in_channels": 8, "out_channels": 32, "pooling_type": "maxpool"},
