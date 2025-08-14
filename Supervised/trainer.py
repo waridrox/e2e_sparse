@@ -27,7 +27,22 @@ if __name__ == "__main__":
     argparser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     argparser.add_argument("--model_variant",type=str, default="ResNet_PC_768_S", help="Model variant to use. Options: ResNet_PC_768_S, ResNet_PC_768_M, ResNet_PC_1024_S, ResNet_PC_1024_M,, ResNet_PC_1024_L")
     
+    argparser.add_argument("--UseWandb",type=bool, default=False, help="Use WandB for logging")
+
+
+    argparser.add_argument("--wandb_project", type=str, default=None, help="WandB project name")
+    argparser.add_argument("--wandb_entity", type=str, default=None, help="WandB entity name")
+    argparser.add_argument("--wandb_run_name", type=str, default=None, help="WandB run name")
+    argparser.add_argument("--wandb_key", type=str, default=None, help="WandB API key")
+
     args = argparser.parse_args()
+
+    if args.UseWandb:
+        assert args.wandb_project is not None, "WandB project name must be specified"
+        assert args.wandb_entity is not None, "WandB entity name must be specified"
+        assert args.wandb_run_name is not None, "WandB run name must be specified"
+        assert args.wandb_key is not None, "WandB API key must be specified"
+
     seed = 42
     random.seed(seed)
     np.random.seed(seed)
@@ -42,6 +57,7 @@ if __name__ == "__main__":
     Nepochs = args.Nepochs
     device = "cuda:0"
 
+
     model = getattr(CnnModel, args.model_variant)().model
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.05)
     criterion = nn.BCEWithLogitsLoss()
@@ -54,6 +70,21 @@ if __name__ == "__main__":
     model = model.to(device)
 
 
+
+    config = {
+        "Epochs": Nepochs,
+        "Learning Rate": args.lr,
+        "Model Variant": args.model_variant,
+        "Batch Size": BATCH_SIZE
+    }
+
+    wandb.login(key=args.wandb_key)
+    wandb.init(project=args.wandb_project,
+                entity=args.wandb_entity,
+                name=args.wandb_run_name,
+                settings=wandb.Settings(_disable_stats=True),
+                config=config)
+    
     for epoch in range(Nepochs):
         
         train_loss = 0
@@ -88,8 +119,8 @@ if __name__ == "__main__":
         
         train_loss /= data_file["train_dataset"]["X"].shape[0] // BATCH_SIZE
         train_auc = metric(y_true=label_list,y_pred=output_list)
-        
-        
+        train_accuracy = np.where((label_list == output_list))[0].shape[0] / label_list.shape[0]
+
         val_loss = 0
         
         label_list = []
@@ -115,10 +146,25 @@ if __name__ == "__main__":
         
         val_loss /= data_file["test_dataset"]["X"].shape[0] // BATCH_SIZE
         val_auc = metric(y_true=label_list,y_pred=output_list)
+        val_accuracy = np.where((label_list == output_list))[0].shape[0] / label_list.shape[0]
 
         print(f"Epoch {epoch+1}/{Nepochs} - "
-            f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f} - "
-            f"Val loss: {val_loss:.4f} - Val AUC: {val_auc:.4f}")
+            f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f} - Train Accuracy: {train_accuracy:.4f} - "
+            f"Val loss: {val_loss:.4f} - Val AUC: {val_auc:.4f} - Val Accuracy: {val_accuracy:.4f}")
+
+
+        wandb.log({
+            "Epoch": epoch + 1,
+            "Train Loss": train_loss,
+            "Train AUC": train_auc,
+            "Val Loss": val_loss,
+            "Val AUC": val_auc,
+            "Train Accuracy": train_accuracy,
+            "Val Accuracy": val_accuracy,
+            "Lr": scheduler.get_last_lr()[0]
+        })
 
         scheduler.step(val_auc)
         gc.collect()
+
+    wandb.finish()
