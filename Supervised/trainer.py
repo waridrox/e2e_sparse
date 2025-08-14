@@ -13,7 +13,9 @@ import argparse
 import random
 import sys
 import yaml
+
 from CNN import model as CnnModel
+from AggregationTransformer import model as AgT
 
 def metric(y_true, y_pred):
     fpr, tpr, thresholds = roc_curve(y_true, y_pred)
@@ -63,7 +65,13 @@ if __name__ == "__main__":
 
     checkpoint_file = os.path.join(checkpoint_dir, "model.pth")
 
-    model = getattr(CnnModel, args.model_variant)().model
+    if args.model_variant.startswith("ResNet_PC"):
+        model = getattr(CnnModel, args.model_variant)().model
+    elif args.model_variant.startswith("Transformer_PC"):
+        model = getattr(AgT, args.model_variant)().model
+    else:
+        print("Not valid model variant")
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.05)
     criterion = nn.BCEWithLogitsLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
@@ -75,6 +83,8 @@ if __name__ == "__main__":
 
     wandb_run_id = None
     present_epoch = 0
+
+    model = model.to(device)
     
     if os.path.exists(checkpoint_file):        
         model_checkpoint = torch.load(checkpoint_file)
@@ -84,7 +94,7 @@ if __name__ == "__main__":
         wandb_run_id = model_checkpoint["WandBRunID"]
         present_epoch = model_checkpoint["LastEpoch"]
 
-    model = model.to(device)
+    
 
     config = {
         "Epochs": Nepochs,
@@ -124,7 +134,7 @@ if __name__ == "__main__":
         output_list = []
         
         idx = torch.randperm(data_file["train_dataset"]["X"].shape[0])
-
+        model.train()
         for batch in tqdm(range(0,data_file["train_dataset"]["X"].shape[0],BATCH_SIZE)):
 
             batch_idx,_ = torch.sort(idx[batch:(batch+BATCH_SIZE)])
@@ -134,6 +144,10 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             
             logit_out = model(x_batch.float())
+            
+            class_out = torch.sigmoid(logit_out.detach())
+            class_out[class_out >= 0.5] = 1
+            class_out[class_out < 0.5] = 0
             
             loss = criterion(logit_out, y_batch.float())
             loss.backward()
@@ -150,34 +164,40 @@ if __name__ == "__main__":
         
         train_loss /= data_file["train_dataset"]["X"].shape[0] // BATCH_SIZE
         train_auc = metric(y_true=label_list,y_pred=output_list)
-        train_accuracy = np.where((label_list == output_list))[0].shape[0] / label_list.shape[0]
+        train_accuracy = np.where((class_out == output_list))[0].shape[0] / label_list.shape[0]
 
         val_loss = 0
         
         label_list = []
         output_list = []
-        
-        for batch in tqdm(range(0,data_file["test_dataset"]["X"].shape[0],BATCH_SIZE)):
+
+        model.eval()
+        with torch.no_grad():
+            for batch in tqdm(range(0,data_file["test_dataset"]["X"].shape[0],BATCH_SIZE)):
+                
+                x_batch = torch.tensor(data_file["test_dataset"]["X"][batch:(batch+BATCH_SIZE)],device=device)
+                y_batch = torch.tensor(data_file["test_dataset"]["Y"][batch:(batch+BATCH_SIZE)],device=device)
+                
+                logit_out = model(x_batch.float())
+                
+                class_out = torch.sigmoid(logit_out.detach())
+                class_out[class_out >= 0.5] = 1
+                class_out[class_out < 0.5] = 0
+                
+                loss = criterion(logit_out, y_batch.float())
             
-            x_batch = torch.tensor(data_file["test_dataset"]["X"][batch:(batch+BATCH_SIZE)],device=device)
-            y_batch = torch.tensor(data_file["test_dataset"]["Y"][batch:(batch+BATCH_SIZE)],device=device)
+                val_loss+= loss.item()
+                
+                label_list.append(y_batch.detach().cpu().numpy())
+                output_list.append(logit_out.detach().cpu().numpy())
+                
             
-            logit_out = model(x_batch.float())
+            label_list = np.concatenate(label_list)
+            output_list = np.concatenate(output_list)
             
-            loss = criterion(logit_out, y_batch.float())
-        
-            val_loss+= loss.item()
-            
-            label_list.append(y_batch.detach().cpu().numpy())
-            output_list.append(logit_out.detach().cpu().numpy())
-            
-        
-        label_list = np.concatenate(label_list)
-        output_list = np.concatenate(output_list)
-        
-        val_loss /= data_file["test_dataset"]["X"].shape[0] // BATCH_SIZE
-        val_auc = metric(y_true=label_list,y_pred=output_list)
-        val_accuracy = np.where((label_list == output_list))[0].shape[0] / label_list.shape[0]
+            val_loss /= data_file["test_dataset"]["X"].shape[0] // BATCH_SIZE
+            val_auc = metric(y_true=label_list,y_pred=output_list)
+            val_accuracy = np.where((class_out == output_list))[0].shape[0] / label_list.shape[0]
 
         print(f"Epoch {epoch+1}/{Nepochs} - "
             f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f} - Train Accuracy: {train_accuracy:.4f} - "
