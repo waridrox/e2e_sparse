@@ -28,9 +28,9 @@ if [ -f ${BASE_DIR}/Dataset/QG256.h5 ]; then
   rm -rf ${BASE_DIR}/Dataset/QG256.h5
 fi
 
-python3 ToPointCloudForm.py --input_file=input.h5 --OutFile=${BASE_DIR}/Dataset/QG1024.h5 --MaxPoints=1024 &
-python3 ToPointCloudForm.py --input_file=input.h5 --OutFile=${BASE_DIR}/Dataset/QG768.h5 --MaxPoints=768 &
-python3 ToPointCloudForm.py --input_file=input.h5 --OutFile=${BASE_DIR}/Dataset/QG512.h5 --MaxPoints=512 &
-python3 ToPointCloudForm.py --input_file=input.h5 --OutFile=${BASE_DIR}/Dataset/QG256.h5 --MaxPoints=256 &
+python3 ToPointCloudForm.py --OutFile=${BASE_DIR}/Dataset/QG1024.h5 --MaxPoints=1024 &
+python3 ToPointCloudForm.py --OutFile=${BASE_DIR}/Dataset/QG768.h5 --MaxPoints=768 &
+python3 ToPointCloudForm.py --OutFile=${BASE_DIR}/Dataset/QG512.h5 --MaxPoints=512 &
+python3 ToPointCloudForm.py --OutFile=${BASE_DIR}/Dataset/QG256.h5 --MaxPoints=256 &
 
 wait
