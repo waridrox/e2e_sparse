@@ -60,7 +60,6 @@ if __name__ == "__main__":
     argparser.add_argument("--datadir",
                            default="/global/cfs/cdirs/m4392/ACAT_Backup/Data/QG",
                            type=str,
-                           required=True,
                            help="Path to the data directory.")
     argparser.add_argument("--MaxPoints",
                            default=768,
