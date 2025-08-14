@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 
@@ -11,6 +12,7 @@ import h5py as h5
 import argparse
 import random
 import sys
+import yaml
 from CNN import model as CnnModel
 
 def metric(y_true, y_pred):
@@ -35,6 +37,8 @@ if __name__ == "__main__":
     argparser.add_argument("--wandb_run_name", type=str, default=None, help="WandB run name")
     argparser.add_argument("--wandb_key", type=str, default=None, help="WandB API key")
 
+    argparser.add_argument("--Checkpoint_dir", type=str, default=None, help="Checkpoint directory")
+
     args = argparser.parse_args()
 
     if args.UseWandb:
@@ -56,7 +60,9 @@ if __name__ == "__main__":
     BATCH_SIZE = 512
     Nepochs = args.Nepochs
     device = "cuda:0"
+    checkpoint_dir = args.Checkpoint_dir
 
+    checkpoint_file = os.path.join(checkpoint_dir, "model.pth")
 
     model = getattr(CnnModel, args.model_variant)().model
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.05)
@@ -67,9 +73,19 @@ if __name__ == "__main__":
                                                            threshold = 0.0001,
                                                            patience = 5,
                                                            factor = 0.5)
+
+    wandb_run_id = None
+    present_epoch = 0
+    
+    if os.path.exists(checkpoint_file):        
+        model_checkpoint = torch.load(checkpoint_file)
+        model.load_state_dict(model_checkpoint["model_state_dict"])
+        optimizer.load_state_dict(model_checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(model_checkpoint["scheduler_state_dict"])
+        wandb_run_id = model_checkpoint["WandBRunID"]
+        present_epoch = model_checkpoint["LastEpoch"]
+
     model = model.to(device)
-
-
 
     config = {
         "Epochs": Nepochs,
@@ -80,15 +96,27 @@ if __name__ == "__main__":
 
     if args.UseWandb:
         wandb.login(key=args.wandb_key)
-        wandb.init(project=args.wandb_project,
-                    entity=args.wandb_entity,
-                    name=args.wandb_run_name,
-                    settings=wandb.Settings(_disable_stats=True),
-                    config=config,
-                    dir="/dev/shm"
-                    )
+        if wandb_run_id:
+            wandb.init(project=args.wandb_project,
+                        entity=args.wandb_entity,
+                        name=args.wandb_run_name,
+                        id=wandb_run_id,
+                        resume="must",
+                        settings=wandb.Settings(_disable_stats=True),
+                        config=config,
+                        dir="/dev/shm"
+                        )
+        else:
+            wandb.init(project=args.wandb_project,
+                        entity=args.wandb_entity,
+                        name=args.wandb_run_name,
+                        settings=wandb.Settings(_disable_stats=True),
+                        config=config,
+                        dir="/dev/shm"
+                        )
         
-    for epoch in range(Nepochs):
+    
+    for epoch in range(present_epoch,Nepochs,1):
         
         train_loss = 0
         
@@ -168,6 +196,15 @@ if __name__ == "__main__":
             })
 
         scheduler.step(val_auc)
+
+        model_checkpoint = {
+            "LastEpoch": epoch + 1,
+            "WandBRunID": wandb.run.id if args.UseWandb else None,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict(),
+        }
+        torch.save(model_checkpoint, checkpoint_file)
         gc.collect()
 
     wandb.finish()

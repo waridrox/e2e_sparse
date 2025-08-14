@@ -4,6 +4,7 @@ module load tensorflow/2.12.0
 
 BASE_DIR=${PSCRATCH}/e2e_sparse
 
+run_id=$1
 
 ########################################################################
 
@@ -16,7 +17,8 @@ CUDA_VISIBLE_DEVICES=0 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_1024_S \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_1024_S_${run_id} &
 
 
   CUDA_VISIBLE_DEVICES=0 python3 ${BASE_DIR}/Supervised/trainer.py \
@@ -28,7 +30,8 @@ CUDA_VISIBLE_DEVICES=0 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_1024_M \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_1024_M_${run_id} &
 ########################################################################
 
 CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
@@ -40,7 +43,8 @@ CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_768_S \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_768_S_${run_id} &
 
   CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
   --datapath=${BASE_DIR}/Dataset/QG768.h5 \
@@ -51,7 +55,8 @@ CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_768_M \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_768_M_${run_id} &
 
 ########################################################################
 
@@ -64,7 +69,8 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_512_S \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_512_S_${run_id} &
 
 
   CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
@@ -76,7 +82,8 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_512_M \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_512_M_${run_id} &
 
 ########################################################################
 
@@ -89,7 +96,8 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_256_S \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_256_S_${run_id} &
 
   CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
   --datapath=${BASE_DIR}/Dataset/QG256.h5 \
@@ -100,6 +108,7 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_project=SparseCNN \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=ResNet_PC_256_M \
-  --wandb_key=$wandb_key &
+  --wandb_key=$wandb_key \
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_256_M_${run_id} &
 
   wait
