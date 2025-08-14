@@ -73,7 +73,7 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_512_S_${run_id} &
 
 
-  CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
+  CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --datapath=${BASE_DIR}/Dataset/QG512.h5 \
   --Nepochs=100 \
   --lr=1e-3 \
@@ -87,7 +87,7 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
 
 ########################################################################
 
-CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
+CUDA_VISIBLE_DEVICES=3 python3 ${BASE_DIR}/Supervised/trainer.py \
   --datapath=${BASE_DIR}/Dataset/QG256.h5 \
   --Nepochs=100 \
   --lr=1e-3 \
@@ -99,7 +99,7 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_key=$wandb_key \
   --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/ResNet_PC_256_S_${run_id} &
 
-  CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
+  CUDA_VISIBLE_DEVICES=3 python3 ${BASE_DIR}/Supervised/trainer.py \
   --datapath=${BASE_DIR}/Dataset/QG256.h5 \
   --Nepochs=100 \
   --lr=1e-3 \
