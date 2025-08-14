@@ -78,13 +78,16 @@ if __name__ == "__main__":
         "Batch Size": BATCH_SIZE
     }
 
-    wandb.login(key=args.wandb_key)
-    wandb.init(project=args.wandb_project,
-                entity=args.wandb_entity,
-                name=args.wandb_run_name,
-                settings=wandb.Settings(_disable_stats=True),
-                config=config)
-    
+    if args.UseWandb:
+        wandb.login(key=args.wandb_key)
+        wandb.init(project=args.wandb_project,
+                    entity=args.wandb_entity,
+                    name=args.wandb_run_name,
+                    settings=wandb.Settings(_disable_stats=True),
+                    config=config,
+                    dir="/dev/shm"
+                    )
+        
     for epoch in range(Nepochs):
         
         train_loss = 0
@@ -152,17 +155,17 @@ if __name__ == "__main__":
             f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f} - Train Accuracy: {train_accuracy:.4f} - "
             f"Val loss: {val_loss:.4f} - Val AUC: {val_auc:.4f} - Val Accuracy: {val_accuracy:.4f}")
 
-
-        wandb.log({
-            "Epoch": epoch + 1,
-            "Train Loss": train_loss,
-            "Train AUC": train_auc,
-            "Val Loss": val_loss,
-            "Val AUC": val_auc,
-            "Train Accuracy": train_accuracy,
-            "Val Accuracy": val_accuracy,
-            "Lr": optimizer.param_groups[0]["lr"]
-        })
+        if args.UseWandb:
+            wandb.log({
+                "Epoch": epoch + 1,
+                "Train Loss": train_loss,
+                "Train AUC": train_auc,
+                "Val Loss": val_loss,
+                "Val AUC": val_auc,
+                "Train Accuracy": train_accuracy,
+                "Val Accuracy": val_accuracy,
+                "Lr": optimizer.param_groups[0]["lr"]
+            })
 
         scheduler.step(val_auc)
         gc.collect()
