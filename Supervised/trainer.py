@@ -113,6 +113,7 @@ if __name__ == "__main__":
                         config=config,
                         dir="/dev/shm"
                         )
+            os.makedirs(checkpoint_dir, exist_ok=True)
         
     
     for epoch in range(present_epoch,Nepochs,1):
