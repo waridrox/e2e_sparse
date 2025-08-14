@@ -54,6 +54,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
+    assert args.model_variant in ["ResNet_PC_768_S", "ResNet_PC_768_M", "ResNet_PC_1024_S", "ResNet_PC_1024_M", "ResNet_PC_1024_L"], "Invalid model variant"
     data_file = h5.File(args.datapath, 'r')
 
     BATCH_SIZE = 512
