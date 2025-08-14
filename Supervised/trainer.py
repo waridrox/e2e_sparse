@@ -161,7 +161,7 @@ if __name__ == "__main__":
             "Val AUC": val_auc,
             "Train Accuracy": train_accuracy,
             "Val Accuracy": val_accuracy,
-            "Lr": scheduler.get_last_lr()[0]
+            "Lr": optimizer.param_groups[0]["lr"]
         })
 
         scheduler.step(val_auc)
