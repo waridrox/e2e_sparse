@@ -3,5 +3,5 @@
 **/*.png
 **/*.log
 **/*.out
-
+**/.ipynb_checkpoint
 ./Dataset
