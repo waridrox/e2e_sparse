@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     data_file = h5.File(args.datapath, 'r')
 
-    BATCH_SIZE = 512
+    BATCH_SIZE = 128
     Nepochs = args.Nepochs
     device = "cuda:0"
     checkpoint_dir = args.Checkpoint_dir
