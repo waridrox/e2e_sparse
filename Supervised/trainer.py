@@ -163,12 +163,14 @@ if __name__ == "__main__":
             class_out[class_out >= 0.5] = 1
             class_out[class_out < 0.5] = 0
 
-            loss += criterion(logit_out, y_batch.float())
+            loss = criterion(logit_out, y_batch.float())/GRAD_ACCUM_STEPS
+            loss.backward()
+
             
             
             if step % GRAD_ACCUM_STEPS == 0:
                 optimizer.zero_grad()
-                loss.backward()
+                
                 optimizer.step()
                 
         
