@@ -41,6 +41,8 @@ if __name__ == "__main__":
 
     argparser.add_argument("--Checkpoint_dir", type=str, default=None, help="Checkpoint directory")
 
+    argparser.add_argument("--NAccumSteps", type=int, default=1, help="Number of gradient accumulation steps")
+
     args = argparser.parse_args()
 
     if args.UseWandb:
@@ -58,7 +60,18 @@ if __name__ == "__main__":
 
     data_file = h5.File(args.datapath, 'r')
 
-    BATCH_SIZE = 128
+    BATCH_SIZE = 256
+
+    GRAD_ACCUM_STEPS = args.NAccumSteps
+    if GRAD_ACCUM_STEPS > 1:
+        print("Grad Accumulation is on: accumulating after every",GRAD_ACCUM_STEPS,"Effective batch size:",BATCH_SIZE//GRAD_ACCUM_STEPS)
+
+    if BATCH_SIZE % GRAD_ACCUM_STEPS != 0:
+        print("Batch size must be divisible by gradient accumulation steps")
+        sys.exit(1)
+    
+    BATCH_SIZE = BATCH_SIZE // GRAD_ACCUM_STEPS
+
     Nepochs = args.Nepochs
     device = "cuda:0"
     checkpoint_dir = args.Checkpoint_dir
@@ -135,29 +148,36 @@ if __name__ == "__main__":
         
         idx = torch.randperm(data_file["train_dataset"]["X"].shape[0])
         model.train()
+
+        step = 0
+        loss = 0
         for batch in tqdm(range(0,data_file["train_dataset"]["X"].shape[0],BATCH_SIZE)):
 
             batch_idx,_ = torch.sort(idx[batch:(batch+BATCH_SIZE)])
             x_batch = torch.tensor(data_file["train_dataset"]["X"][batch_idx],device=device)
             y_batch = torch.tensor(data_file["train_dataset"]["Y"][batch_idx],device=device)
-
-            optimizer.zero_grad()
             
             logit_out = model(x_batch.float())
             
             class_out = torch.sigmoid(logit_out.detach())
             class_out[class_out >= 0.5] = 1
             class_out[class_out < 0.5] = 0
+
+            loss += criterion(logit_out, y_batch.float())
             
-            loss = criterion(logit_out, y_batch.float())
-            loss.backward()
-            optimizer.step()
+            
+            if step % GRAD_ACCUM_STEPS == 0:
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                
         
             train_loss+= loss.item()
             
             label_list.append(y_batch.detach().cpu().numpy())
             output_list.append(logit_out.detach().cpu().numpy())
             
+            step +=1
         
         label_list = np.concatenate(label_list)
         output_list = np.concatenate(output_list)
