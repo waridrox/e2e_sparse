@@ -23,7 +23,8 @@ CUDA_VISIBLE_DEVICES=0 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=Transformer_PC_768_S \
   --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_S_${run_id} &
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_S_${run_id} \
+  --NAccumSteps=4 &
 
 ########################################################################
 
@@ -37,7 +38,8 @@ CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=Transformer_PC_768_M \
   --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_M_${run_id} &
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_M_${run_id} \
+  --NAccumSteps=4 &
 
 ########################################################################
 
@@ -51,7 +53,8 @@ CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=Transformer_PC_768_L \
   --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_L_${run_id} &
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_L_${run_id} \
+  --NAccumSteps=4 &
 ########################################################################
 
 CUDA_VISIBLE_DEVICES=3 python3 ${BASE_DIR}/Supervised/trainer.py \
@@ -64,6 +67,6 @@ CUDA_VISIBLE_DEVICES=3 python3 ${BASE_DIR}/Supervised/trainer.py \
   --wandb_entity=e2e_sparse \
   --wandb_run_name=Transformer_PC_768_H \
   --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_H_${run_id} &
-
+  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_H_${run_id} \
+  --NAccumSteps=4 &
 wait

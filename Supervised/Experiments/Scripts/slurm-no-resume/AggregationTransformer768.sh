@@ -12,58 +12,6 @@ cp ${BASE_DIR}/Dataset/QG768.h5 /dev/shm/ &
 wait
 
 ########################################################################
-
-CUDA_VISIBLE_DEVICES=0 python3 ${BASE_DIR}/Supervised/trainer.py \
-  --datapath=/dev/shm/QG768.h5 \
-  --Nepochs=100 \
-  --lr=1e-3 \
-  --model_variant=Transformer_PC_768_S \
-  --UseWandb=True \
-  --wandb_project=AggregationTransformer \
-  --wandb_entity=e2e_sparse \
-  --wandb_run_name=Transformer_PC_768_S \
-  --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_S_${run_id} &
-
-########################################################################
-
-CUDA_VISIBLE_DEVICES=1 python3 ${BASE_DIR}/Supervised/trainer.py \
-  --datapath=/dev/shm/QG768.h5 \
-  --Nepochs=100 \
-  --lr=1e-3 \
-  --model_variant=Transformer_PC_768_M \
-  --UseWandb=True \
-  --wandb_project=AggregationTransformer \
-  --wandb_entity=e2e_sparse \
-  --wandb_run_name=Transformer_PC_768_M \
-  --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_M_${run_id} &
-
-########################################################################
-
-CUDA_VISIBLE_DEVICES=2 python3 ${BASE_DIR}/Supervised/trainer.py \
-  --datapath=/dev/shm/QG768.h5 \
-  --Nepochs=100 \
-  --lr=1e-3 \
-  --model_variant=Transformer_PC_768_L \
-  --UseWandb=True \
-  --wandb_project=AggregationTransformer \
-  --wandb_entity=e2e_sparse \
-  --wandb_run_name=Transformer_PC_768_L \
-  --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_L_${run_id} &
-########################################################################
-
-CUDA_VISIBLE_DEVICES=3 python3 ${BASE_DIR}/Supervised/trainer.py \
-  --datapath=/dev/shm/QG768.h5 \
-  --Nepochs=100 \
-  --lr=1e-3 \
-  --model_variant=Transformer_PC_768_H \
-  --UseWandb=True \
-  --wandb_project=AggregationTransformer \
-  --wandb_entity=e2e_sparse \
-  --wandb_run_name=Transformer_PC_768_H \
-  --wandb_key=$wandb_key \
-  --Checkpoint_dir=${BASE_DIR}/Supervised/Experiments/Checkpoints/Transformer_PC_768_H_${run_id} &
+bash ${BASE_DIR}/Supervised/Experiments/Scripts/bash/AggregationTransformer768.sh ${run_id} &
 
 wait
