@@ -4,4 +4,5 @@
 **/*.log
 **/*.out
 **/.ipynb_checkpoint*
+**/__pycache__*
 ./Dataset
