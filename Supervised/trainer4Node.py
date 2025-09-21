@@ -1,0 +1,279 @@
+import os
+import torch
+import torch.nn as nn
+
+import numpy as np
+from tqdm.auto import tqdm
+from sklearn.metrics import roc_curve
+from sklearn import metrics
+import gc
+import wandb
+import h5py as h5
+import argparse
+import random
+import sys
+import yaml
+
+from CNN import model as CnnModel
+from AggregationTransformer import model as AgT
+
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+def metric(y_true, y_pred):
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+    auc = metrics.auc(fpr, tpr)
+    return auc
+
+
+#################################################################
+# Taken from PyTorch DDP tutorial
+# https://docs.pytorch.org/tutorials/intermediate/ddp_tutorial.html
+def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    # initialize the process group
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+
+def cleanup():
+    dist.destroy_process_group()
+#################################################################
+
+def shuffle_torch(x):
+    idx = torch.randperm(x.shape[0])
+    return x[idx]
+
+
+def trainer(rank, world_size, args):
+    setup(rank, world_size)
+    
+    data_file = h5.File(args.datapath, 'r')
+
+    BATCH_SIZE = 64
+
+    
+    Nepochs = args.Nepochs
+    checkpoint_dir = args.Checkpoint_dir
+    checkpoint_file = os.path.join(checkpoint_dir, "model.pth")
+
+    if args.model_variant.startswith("ResNet_PC"):
+        model = getattr(CnnModel, args.model_variant)().model
+    elif args.model_variant.startswith("Transformer_PC"):
+        model = getattr(AgT, args.model_variant)().model
+    else:
+        print(f" From rank {rank} Not valid model variant")
+
+    model = model.to(rank)
+    model = DDP(model, device_ids=[rank])
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.05)
+    criterion = nn.BCEWithLogitsLoss()
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+    #                                                        'max',
+    #                                                        verbose = True,
+    #                                                        threshold = 0.0001,
+    #                                                        patience = 5,
+    #                                                        factor = 0.5)
+    wandb_run_id = None
+    present_epoch = 0
+
+    
+    if os.path.exists(checkpoint_file):
+        
+        dist.barrier()
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % rank}
+
+        model_checkpoint = torch.load(checkpoint_file, map_location=map_location)
+        model.load_state_dict(model_checkpoint["model_state_dict"])
+        optimizer.load_state_dict(model_checkpoint["optimizer_state_dict"])
+        # scheduler.load_state_dict(model_checkpoint["scheduler_state_dict"])
+        wandb_run_id = model_checkpoint["WandBRunID"]
+        present_epoch = model_checkpoint["LastEpoch"]
+
+    
+
+    config = {
+        "Epochs": Nepochs,
+        "Learning Rate": args.lr,
+        "Model Variant": args.model_variant,
+        "Batch Size": BATCH_SIZE
+    }
+
+    if args.UseWandb:
+        wandb.login(key=args.wandb_key)
+        if wandb_run_id:
+            if rank == 0:
+                wandb.init(project=args.wandb_project,
+                            entity=args.wandb_entity,
+                            name=args.wandb_run_name,
+                            id=wandb_run_id,
+                            resume="must",
+                            settings=wandb.Settings(_disable_stats=True),
+                            config=config,
+                            dir="/dev/shm"
+                            )
+        else:
+            if rank == 0:
+                wandb.init(project=args.wandb_project,
+                            entity=args.wandb_entity,
+                            name=args.wandb_run_name,
+                            settings=wandb.Settings(_disable_stats=True),
+                            config=config,
+                            dir="/dev/shm"
+                            )
+                os.makedirs(checkpoint_dir, exist_ok=True)
+        
+
+    Nsamples_train = data_file["train_dataset"]["X"].shape[0]
+
+    all_idx_train = np.arange(Nsamples_train)
+
+    visible_idx_train = torch.tensor(all_idx_train[all_idx_train % world_size == rank])
+
+    for epoch in range(present_epoch,Nepochs,1):
+        
+        train_loss = 0
+        
+        label_list = []
+        output_list = []
+        
+        idx = shuffle_torch(visible_idx_train)
+        model.train()
+
+        for batch in tqdm(range(0,visible_idx_train.shape[0],BATCH_SIZE)):
+
+            batch_idx,_ = torch.sort(idx[batch:(batch+BATCH_SIZE)])
+
+            x_batch = torch.tensor(data_file["train_dataset"]["X"][batch_idx],device=rank)
+            y_batch = torch.tensor(data_file["train_dataset"]["Y"][batch_idx],device=rank)
+
+            logit_out = model(x_batch.float())
+            
+            class_out = torch.sigmoid(logit_out.detach())
+            class_out[class_out >= 0.5] = 1
+            class_out[class_out < 0.5] = 0
+
+            loss = criterion(logit_out, y_batch.float())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+                
+        
+            train_loss+= loss.item()
+            
+            label_list.append(y_batch.detach().cpu().numpy())
+            output_list.append(logit_out.detach().cpu().numpy())
+            
+        
+        
+
+        if rank == 0:
+            label_list = np.concatenate(label_list)
+            output_list = np.concatenate(output_list)
+            
+            train_loss /= visible_idx_train.shape[0] // BATCH_SIZE
+            train_auc = metric(y_true=label_list,y_pred=output_list)
+            val_loss = 0
+            
+            label_list = []
+            output_list = []
+
+
+            model.eval()
+            with torch.no_grad():
+                for batch in tqdm(range(0,data_file["test_dataset"]["X"].shape[0],BATCH_SIZE)):
+
+                    x_batch = torch.tensor(data_file["test_dataset"]["X"][batch:(batch+BATCH_SIZE)],device=rank)
+                    y_batch = torch.tensor(data_file["test_dataset"]["Y"][batch:(batch+BATCH_SIZE)],device=rank)
+
+                    logit_out = model(x_batch.float())
+                    
+                    class_out = torch.sigmoid(logit_out.detach())
+                    class_out[class_out >= 0.5] = 1
+                    class_out[class_out < 0.5] = 0
+                    
+                    loss = criterion(logit_out, y_batch.float())
+                
+                    val_loss+= loss.item()
+                    
+                    label_list.append(y_batch.detach().cpu().numpy())
+                    output_list.append(logit_out.detach().cpu().numpy())
+                    
+                
+                label_list = np.concatenate(label_list)
+                output_list = np.concatenate(output_list)
+                
+                val_loss /= data_file["test_dataset"]["X"].shape[0] // BATCH_SIZE
+                val_auc = metric(y_true=label_list,y_pred=output_list)
+
+            print(f"Epoch {epoch+1}/{Nepochs} - "
+                f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f}"
+                f"Val loss: {val_loss:.4f} - Val AUC: {val_auc:.4f}")
+
+            if args.UseWandb:
+                wandb.log({
+                    "Epoch": epoch + 1,
+                    "Train Loss": train_loss,
+                    "Train AUC": train_auc,
+                    "Val Loss": val_loss,
+                    "Val AUC": val_auc,
+                    "Lr": optimizer.param_groups[0]["lr"]
+                })
+
+            # scheduler.step(val_auc)
+
+            model_checkpoint = {
+                "LastEpoch": epoch + 1,
+                "WandBRunID": wandb.run.id if args.UseWandb else None,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                # "scheduler_state_dict": scheduler.state_dict(),
+            }
+            torch.save(model_checkpoint, checkpoint_file)
+        gc.collect()
+
+    if rank == 0 and args.UseWandb:
+        wandb.finish()
+
+    
+if __name__ == "__main__":
+
+    argparser = argparse.ArgumentParser(description="Training script")
+    argparser.add_argument("--datapath", type=str, default="config.yaml", help="Path to config file")
+    argparser.add_argument("--Nepochs", type=int, default=100, help="Number of training epochs")
+    argparser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    argparser.add_argument("--model_variant",type=str, default="ResNet_PC_768_S", help="Model variant to use. Options: ResNet_PC_768_S, ResNet_PC_768_M, ResNet_PC_1024_S, ResNet_PC_1024_M,, ResNet_PC_1024_L")
+    
+    argparser.add_argument("--UseWandb",type=bool, default=False, help="Use WandB for logging")
+
+
+    argparser.add_argument("--wandb_project", type=str, default=None, help="WandB project name")
+    argparser.add_argument("--wandb_entity", type=str, default=None, help="WandB entity name")
+    argparser.add_argument("--wandb_run_name", type=str, default=None, help="WandB run name")
+    argparser.add_argument("--wandb_key", type=str, default=None, help="WandB API key")
+
+    argparser.add_argument("--Checkpoint_dir", type=str, default=None, help="Checkpoint directory")
+
+
+    args = argparser.parse_args()
+
+    if args.UseWandb:
+        assert args.wandb_project is not None, "WandB project name must be specified"
+        assert args.wandb_entity is not None, "WandB entity name must be specified"
+        assert args.wandb_run_name is not None, "WandB run name must be specified"
+        assert args.wandb_key is not None, "WandB API key must be specified"
+
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    world_size = torch.cuda.device_count()
+
+    mp.spawn(trainer,
+             args=(world_size, args),
+             nprocs=world_size,
+             join=True)
