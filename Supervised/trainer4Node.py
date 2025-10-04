@@ -65,6 +65,13 @@ def trainer(rank, world_size, args):
     else:
         print(f" From rank {rank} Not valid model variant")
 
+
+    ####
+    #Lazy forward pass
+
+    with torch.no_grad():
+        _ = model(torch.tensor(data_file["train_dataset"]["X"][[1,2]]).float())
+    ####
     model = model.to(rank)
     model = DDP(model, device_ids=[rank])
 
@@ -100,11 +107,10 @@ def trainer(rank, world_size, args):
         "Model Variant": args.model_variant,
         "Batch Size": BATCH_SIZE
     }
-
-    if args.UseWandb:
-        wandb.login(key=args.wandb_key)
-        if wandb_run_id:
-            if rank == 0:
+    if rank == 0:
+        if args.UseWandb:
+            wandb.login(key=args.wandb_key)
+            if wandb_run_id:
                 wandb.init(project=args.wandb_project,
                             entity=args.wandb_entity,
                             name=args.wandb_run_name,
@@ -114,8 +120,8 @@ def trainer(rank, world_size, args):
                             config=config,
                             dir="/dev/shm"
                             )
-        else:
-            if rank == 0:
+            else:
+                
                 wandb.init(project=args.wandb_project,
                             entity=args.wandb_entity,
                             name=args.wandb_run_name,
@@ -123,7 +129,7 @@ def trainer(rank, world_size, args):
                             config=config,
                             dir="/dev/shm"
                             )
-                os.makedirs(checkpoint_dir, exist_ok=True)
+            os.makedirs(checkpoint_dir, exist_ok=True)
         
 
     Nsamples_train = data_file["train_dataset"]["X"].shape[0]

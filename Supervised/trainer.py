@@ -158,10 +158,6 @@ if __name__ == "__main__":
             y_batch = torch.tensor(data_file["train_dataset"]["Y"][batch_idx],device=device)
             
             logit_out = model(x_batch.float())
-            
-            class_out = torch.sigmoid(logit_out.detach())
-            class_out[class_out >= 0.5] = 1
-            class_out[class_out < 0.5] = 0
 
             loss = criterion(logit_out, y_batch.float())/GRAD_ACCUM_STEPS
             loss.backward()
@@ -169,15 +165,15 @@ if __name__ == "__main__":
             
             
             if step % GRAD_ACCUM_STEPS == 0:
-                optimizer.zero_grad()
                 
                 optimizer.step()
+                optimizer.zero_grad()
                 
         
             train_loss+= loss.item()
             
             label_list.append(y_batch.detach().cpu().numpy())
-            output_list.append(logit_out.detach().cpu().numpy())
+            output_list.append(torch.sigmoid(logit_out.detach()).cpu().numpy())
             
             step +=1
         
@@ -186,7 +182,11 @@ if __name__ == "__main__":
         
         train_loss /= data_file["train_dataset"]["X"].shape[0] // BATCH_SIZE
         train_auc = metric(y_true=label_list,y_pred=output_list)
-        train_accuracy = np.where((class_out == output_list))[0].shape[0] / label_list.shape[0]
+        
+        class_out = output_list.copy()
+        class_out[class_out > 0.5] = 1
+        class_out[class_out <= 0.5] = 0
+        train_accuracy = np.where((class_out == label_list))[0].shape[0] / label_list.shape[0]
 
         val_loss = 0
         
@@ -211,7 +211,7 @@ if __name__ == "__main__":
                 val_loss+= loss.item()
                 
                 label_list.append(y_batch.detach().cpu().numpy())
-                output_list.append(logit_out.detach().cpu().numpy())
+                output_list.append(torch.sigmoid(logit_out.detach()).cpu().numpy())
                 
             
             label_list = np.concatenate(label_list)
@@ -219,7 +219,11 @@ if __name__ == "__main__":
             
             val_loss /= data_file["test_dataset"]["X"].shape[0] // BATCH_SIZE
             val_auc = metric(y_true=label_list,y_pred=output_list)
-            val_accuracy = np.where((class_out == output_list))[0].shape[0] / label_list.shape[0]
+            
+            class_out = output_list.copy()
+            class_out[class_out > 0.5] = 1
+            class_out[class_out <= 0.5] = 0
+            val_accuracy = np.where((class_out == label_list))[0].shape[0] / label_list.shape[0]
 
         print(f"Epoch {epoch+1}/{Nepochs} - "
             f"Train loss: {train_loss:.4f} - Train AUC: {train_auc:.4f} - Train Accuracy: {train_accuracy:.4f} - "

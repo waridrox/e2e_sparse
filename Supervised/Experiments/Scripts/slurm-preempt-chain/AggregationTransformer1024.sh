@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-task=4
 #SBATCH --job-name=AggregationTransformer1024
-
+#SBATCH --requeue 
 
 timeout_handler()
 {
