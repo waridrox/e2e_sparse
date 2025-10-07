@@ -6,3 +6,4 @@
 **/.ipynb_checkpoint*
 **/__pycache__*
 ./Dataset
+.DS_Store
