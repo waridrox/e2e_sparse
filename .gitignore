@@ -1,6 +1,6 @@
 **/*.h5
 **/*.pdf
-**/*.png
+# **/*.png
 **/*.log
 **/*.out
 **/.ipynb_checkpoint*
