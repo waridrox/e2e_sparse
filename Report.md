@@ -204,3 +204,84 @@ plt.show()
 ```
 
 <img src="./assets/energy3.png" alt="3D scatter plot showing point clouds" width="500"/>
+
+## Energy-Based Trimming and Final Dataset Preparation
+
+After initial point cloud conversion, the dataset still contains jets with highly variable numbers of hits (ranging from ~50 to 1800+). To create a uniform input size for neural networks and focus on the most energetic hits, we apply an energy-based trimming strategy.
+
+### Step 1: Determine Maximum Hit Count
+
+First, we scan through all jets to find the maximum number of hits in the entire dataset:
+
+```python
+max_hit = 0
+for i in tqdm(range(0, Data_file["train_jet"].shape[0]//nevents + 1, 1)):
+    x = Data_file["train_jet"][i*nevents:(i+1)*nevents, :]
+    mask = np.sum((x > 0), axis=-1) > 0
+    nhits = np.sum(mask, (1, 2))
+    if nhits.max() > max_hit:
+        max_hit = nhits.max()
+```
+
+**Result**: `max_hit = 1825` hits in the most complex jet event.
+
+### Step 2: Apply Energy Trimming
+
+Rather than keeping all 1825 hits (which would be computationally expensive and include many low-energy noise hits), we trim each jet to keep only the top 200 most energetic hits:
+
+```python
+TrimPoints = 200
+X = []
+Y = []
+
+for i in tqdm(range(Total_num_events)):
+    x = Data_file["train_jet"][i, :]
+    x = get_point_clouds(x)  # Convert to point cloud
+    x = trim(x, CUT_POINTS=TrimPoints)  # Keep top 200 energetic hits
+    y = Data_file["test_meta"][i, 2]  # Get label
+    X.append(x[None, :, :])
+    Y.append(y)
+
+X_ = np.concatenate(X, 0)
+Y_ = np.array(Y)
+```
+
+**Output Shape**: `(793900, 200, 5)`
+- 793,900 jet events
+- 200 hits per jet (trimmed)
+- 5 features per hit: [Track, ECAL, HCAL, X_coordinate, Y_coordinate]
+
+### Why Trim to 200 Points?
+
+1. **Focus on Signal**: High-energy hits contain the most discriminative physics information
+2. **Noise Reduction**: Low-energy hits are often detector noise or soft radiation
+
+### Step 3: Visualization - Comparing Original vs Trimmed Data
+
+To verify that trimming preserves the essential jet structure, we reconstruct the spatial projections:
+
+```python
+sample_idx = 2
+sample = Data_file["train_jet"][sample_idx, :]
+trimmed_point_cloud = X_[sample_idx]
+
+# Reconstruct projection from trimmed point cloud
+projection = np.zeros((125, 125, 3))
+for i in range(trimmed_point_cloud.shape[0]):
+    x = trimmed_point_cloud[i, -1]  # X coordinate
+    y = trimmed_point_cloud[i, -2]  # Y coordinate
+    projection[int(x), int(y), :] = trimmed_point_cloud[i, 0:3]  # [Track, ECAL, HCAL]
+
+# Visualize original vs trimmed
+fig, axes = plt.subplots(2, 3, figsize=(12, 10))
+for i in range(3):
+    axes[0, i].imshow(projection[:, :, i])
+    axes[0, i].set_title(f'Projection Coordinate {i}')
+    axes[0, i].axis('off')
+    axes[1, i].imshow(sample[:, :, i])
+    axes[1, i].set_title(f'Sample Coordinate {i}')
+    axes[1, i].axis('off')
+plt.tight_layout()
+plt.show()
+```
+<img src="./assets/energy4.png" alt="Energy Trimming Comparison" width="500"/>
